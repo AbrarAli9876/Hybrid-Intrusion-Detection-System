@@ -3,7 +3,9 @@ Streamlit SOC-style dashboard for the hybrid IDS alerts.
 """
 from __future__ import annotations
 
+import base64
 from datetime import datetime
+from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
@@ -99,12 +101,31 @@ h1, h2, h3, h4, h5, h6 {color: var(--text);}
 .chart-hero {max-width: 1180px; margin: 6px auto 20px auto; background: linear-gradient(145deg, rgba(15,23,42,0.95), rgba(12,17,27,0.9)); border: 1px solid var(--stroke); border-radius: 18px; padding: 22px 24px 18px; box-shadow: var(--shadow);} 
 .chart-hero .chart-title {text-align: center; font-size: 22px; font-weight: 800; letter-spacing: 0.3px; margin-bottom: 4px;}
 .chart-hero .chart-subtitle {text-align: center; color: var(--muted); font-size: 13px; letter-spacing: 0.2px; margin-bottom: 12px;}
+.about-card {display:flex; gap:16px; align-items:center; background: linear-gradient(135deg, #0f172a, #0c111b); border: 1px solid var(--stroke); border-radius: 18px; padding: 14px 16px; box-shadow: var(--shadow); margin-bottom: 14px;}
+.about-avatar {flex:0 0 120px; height:120px; border-radius:50%; display:flex; align-items:center; justify-content:center; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.12), transparent 55%), linear-gradient(145deg, #1f2937, #0b0f14); border: 2px solid rgba(255,255,255,0.08); overflow:hidden;}
+.about-img {width:120px; height:120px; object-fit:cover; border-radius:50%; display:block;}
+.about-body {display:flex; flex-direction:column; gap:4px; color: var(--text);}
+.about-name {font-size:24px; font-weight:800; letter-spacing:0.3px;}
+.about-role {font-size:15px; color: var(--muted); font-weight:600; margin-bottom:6px;}
+.about-row {font-size:14px; color: var(--text); display:flex; align-items:center; gap:8px;}
+.about-links {display:flex; gap:14px; font-size:14px; color: var(--text); margin-top:6px;}
+.about-links a {color: var(--text); text-decoration:none; border-bottom:1px solid transparent;}
+.about-links a:hover {border-bottom-color: var(--text);}
+.photo-toggle {display:none;}
+.photo-modal {display:none; position:fixed; inset:0; background:rgba(0,0,0,0.75); align-items:center; justify-content:center; z-index:9999; padding:20px;}
+.photo-toggle:checked ~ .photo-modal {display:flex;}
+.photo-content {background:#0b0f14; border:1px solid var(--stroke); border-radius:16px; padding:12px; box-shadow:0 18px 42px rgba(0,0,0,0.5); max-width:90vw; max-height:90vh; display:flex; align-items:center; justify-content:center;}
+.photo-full {max-width:86vw; max-height:86vh; border-radius:12px; object-fit:contain;}
+.photo-backdrop {position:absolute; inset:0;}
+.about-avatar {cursor:zoom-in;}
 </style>
 """
 
 st.markdown(DARK_CSS, unsafe_allow_html=True)
 
 REQUIRED_COLUMNS = {"severity", "signature_flag", "ml_attack", "reasons"}
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
+PHOTO_PATH = ASSETS_DIR / "developer.jpg"
 
 
 def _as_bool(value: object) -> bool:
@@ -115,6 +136,24 @@ def _as_bool(value: object) -> bool:
         return False
     text = str(value).strip().lower()
     return text in {"1", "true", "yes", "y", "t"}
+
+
+def _load_photo_data_url(path: Path) -> str:
+    try:
+        data = path.read_bytes()
+        encoded = base64.b64encode(data).decode("ascii")
+        suffix = path.suffix.lower()
+        if suffix in {".jpg", ".jpeg"}:
+            mime = "image/jpeg"
+        elif suffix == ".png":
+            mime = "image/png"
+        elif suffix == ".svg":
+            mime = "image/svg+xml"
+        else:
+            mime = "application/octet-stream"
+        return f"data:{mime};base64,{encoded}"
+    except Exception:
+        return ""
 
 
 def prepare_alerts(df: pd.DataFrame) -> pd.DataFrame:
@@ -371,6 +410,32 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# About Me section
+photo_src = _load_photo_data_url(PHOTO_PATH)
+avatar_img = f"<img class='about-img' src='{photo_src}' alt='K.S. Abrar Ali Ahmed' />" if photo_src else "<div class='about-avatar'>AA</div>"
+full_img = f"<img class='photo-full' src='{photo_src}' alt='K.S. Abrar Ali Ahmed' />" if photo_src else ""
+about_html = f"""
+<div class="about-card">
+    <input type="checkbox" id="photo-zoom" class="photo-toggle" />
+    <label for="photo-zoom" class="about-avatar">{avatar_img}</label>
+    <div class="photo-modal">
+        <label for="photo-zoom" class="photo-backdrop"></label>
+        <label for="photo-zoom" class="photo-content">{full_img}</label>
+    </div>
+    <div class="about-body">
+        <div class="about-name">K.S. Abrar Ali Ahmed</div>
+        <div class="about-role">Developer &amp; Student</div>
+        <div class="about-row">📧 ksaabrarahmed2021@gmail.com</div>
+        <div class="about-row">🏫 K S School of Engineering and Management</div>
+        <div class="about-links">
+            <a href="https://www.linkedin.com/in/abrar-ali-ahmed/" target="_blank" rel="noopener">LinkedIn</a>
+            <a href="https://github.com/AbrarAli9876/" target="_blank" rel="noopener">GitHub</a>
+        </div>
+    </div>
+</div>
+"""
+st.markdown(about_html, unsafe_allow_html=True)
 
 with st.container():
     st.markdown("<div class='upload-card'>", unsafe_allow_html=True)
